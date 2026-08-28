@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="theme-color" content="#6366f1"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="AgentPanel"/>
+<title>Tasklet Agent Panel</title>
+<link rel="manifest" href="manifest.json"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0d0d14;--card:#161623;--card2:#1e1e32;--border:#2d2d41;
+  --accent:#6366f1;--green:#22c55e;--red:#ef4444;--yellow:#eab308;
+  --text:#ffffff;--sub:#94a3b8;--mono:'Courier New',monospace;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
+
+/* Header */
+.header{position:fixed;top:0;left:0;right:0;height:60px;background:var(--card);z-index:100;
+  display:flex;align-items:center;padding:0 16px;border-bottom:1px solid var(--border)}
+.header-title{font-size:17px;font-weight:700;letter-spacing:.5px}
+.header-sub{font-size:10px;color:var(--sub);margin-top:2px}
+
+/* Bottom nav */
+.nav{position:fixed;bottom:0;left:0;right:0;height:58px;background:var(--card);
+  display:flex;border-top:1px solid var(--border);z-index:100}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;cursor:pointer;transition:background .15s;border:none;background:transparent;color:var(--sub)}
+.nav-btn.active{color:var(--accent)}
+.nav-btn span{font-size:19px}
+.nav-btn p{font-size:9px;font-weight:600;letter-spacing:.3px}
+
+/* Content area */
+.content{position:fixed;top:60px;left:0;right:0;bottom:58px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.tab{display:none;padding:12px}
+.tab.active{display:block}
+
+/* Stat bar */
+.stat-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat-card{background:var(--card);border-radius:10px;padding:10px 14px}
+.stat-val{font-size:26px;font-weight:700}
+.stat-lbl{font-size:9px;color:var(--sub);margin-top:2px;letter-spacing:.5px}
+
+/* Agent card */
+.agent-card{background:var(--card);border-radius:10px;margin-bottom:8px;
+  display:flex;align-items:center;overflow:hidden;cursor:pointer;transition:background .15s}
+.agent-card:active{background:var(--card2)}
+.agent-bar{width:5px;align-self:stretch;flex-shrink:0}
+.agent-body{flex:1;padding:10px 12px}
+.agent-num{font-size:10px;color:var(--sub)}
+.agent-name{font-size:15px;font-weight:700;margin-top:1px}
+.agent-cat{font-size:11px;margin-top:2px}
+.agent-desc{font-size:11px;color:var(--sub);margin-top:4px;line-height:1.4}
+.agent-id{font-size:9px;color:var(--border);font-family:var(--mono);margin-top:4px}
+.agent-dot{width:10px;height:10px;border-radius:50%;margin-right:14px;flex-shrink:0;transition:background .3s}
+.agent-dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.agent-dot.off{background:var(--red)}
+
+/* Launch tab */
+.launch-item{background:var(--card);border-radius:10px;margin-bottom:8px;
+  display:flex;align-items:center;overflow:hidden}
+.launch-body{flex:1;padding:10px 12px}
+.launch-name{font-size:14px;font-weight:700}
+.launch-id{font-size:10px;color:var(--sub);font-family:var(--mono);margin-top:2px}
+.launch-btn{margin:8px;padding:10px 18px;border-radius:8px;border:none;font-size:12px;
+  font-weight:700;cursor:pointer;color:#fff;letter-spacing:.5px;flex-shrink:0;transition:opacity .15s}
+.launch-btn:active{opacity:.7}
+
+/* Control tab */
+.ctrl-item{background:var(--card);border-radius:10px;margin-bottom:8px;
+  display:flex;align-items:center;padding:10px 12px;overflow:hidden}
+.ctrl-bar{width:5px;height:40px;border-radius:3px;margin-right:12px;flex-shrink:0}
+.ctrl-info{flex:1}
+.ctrl-name{font-size:14px;font-weight:700}
+.ctrl-cat{font-size:10px;color:var(--sub);margin-top:2px}
+.toggle{width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;
+  position:relative;flex-shrink:0;transition:background .25s}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;
+  border-radius:50%;background:#fff;transition:transform .25s;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.toggle.on{background:var(--green)}
+.toggle.on::after{transform:translateX(24px)}
+.toggle.off{background:var(--red)}
+
+/* Bulk buttons */
+.bulk-row{display:flex;gap:8px;margin-bottom:12px}
+.bulk-btn{flex:1;padding:12px;border-radius:10px;border:none;font-size:13px;font-weight:700;
+  cursor:pointer;color:#fff;letter-spacing:.3px;transition:opacity .15s}
+.bulk-btn:active{opacity:.7}
+
+/* Log tab */
+.log-box{background:var(--card);border-radius:10px;padding:12px;font-family:var(--mono);
+  font-size:11px;color:#22c55e;line-height:1.7;min-height:300px;white-space:pre-wrap;word-break:break-all}
+.log-actions{display:flex;gap:8px;margin-top:10px}
+.log-btn{flex:1;padding:11px;border-radius:8px;border:none;font-size:12px;font-weight:700;
+  cursor:pointer;background:var(--card2);color:var(--sub)}
+
+/* Info card */
+.info-card{background:var(--card);border-radius:10px;padding:16px;margin-top:10px}
+.info-section{font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.5px;margin:12px 0 4px}
+.info-line{font-size:12px;color:var(--sub);margin-bottom:2px}
+.info-highlight{color:var(--text)}
+.info-warn{color:var(--red)}
+
+/* Section title */
+.section-title{font-size:18px;font-weight:700;margin-bottom:12px;letter-spacing:.3px}
+
+/* Search */
+.search-wrap{position:relative;margin-bottom:12px}
+.search-input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:10px 16px 10px 40px;color:var(--text);font-size:14px;outline:none}
+.search-input::placeholder{color:var(--sub)}
+.search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--sub);font-size:16px}
+
+/* Install banner */
+.install-banner{background:var(--accent);border-radius:10px;padding:12px 16px;
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.install-banner p{font-size:13px;font-weight:600}
+.install-banner small{font-size:11px;opacity:.8}
+.install-close{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;
+  padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div>
+    <div class="header-title">TASKLET AGENT PANEL</div>
+    <div class="header-sub">© 2026 tom &nbsp;|&nbsp; PANEL-ANDROID-v1.0 &nbsp;|&nbsp; Tajemnica Handlowa</div>
+  </div>
+</div>
+
+<!-- Content -->
+<div class="content">
+
+  <!-- TAB: DASHBOARD -->
+  <div class="tab active" id="tab-dashboard">
+    <div id="install-banner" class="install-banner" style="display:none">
+      <div><p>Dodaj do ekranu głównego</p><small>Działa jak natywna aplikacja</small></div>
+      <button class="install-close" onclick="installPWA()">INSTALUJ</button>
+    </div>
+    <div class="stat-bar">
+      <div class="stat-card"><div class="stat-val" style="color:var(--accent)" id="stat-total">15</div><div class="stat-lbl">AGENTÓW</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--green)" id="stat-on">15</div><div class="stat-lbl">AKTYWNYCH</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--red)" id="stat-off">0</div><div class="stat-lbl">NIEAKTYWNYCH</div></div>
+    </div>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" id="search-input" type="search" placeholder="Szukaj agenta..." oninput="filterAgents(this.value)"/>
+    </div>
+    <div id="agent-list"></div>
+  </div>
+
+  <!-- TAB: LAUNCHER -->
+  <div class="tab" id="tab-launcher">
+    <div class="section-title">LAUNCHER</div>
+    <div style="background:var(--card);border-radius:10px;padding:10px 14px;margin-bottom:12px">
+      <div style="font-size:11px;color:var(--sub);margin-bottom:6px">Tasklet URL</div>
+      <input id="url-input" type="url" value="https://tasklet.ai"
+        style="width:100%;background:transparent;border:none;color:var(--text);font-size:13px;font-family:var(--mono);outline:none"/>
+    </div>
+    <div id="launch-list"></div>
+  </div>
+
+  <!-- TAB: KONTROLNY -->
+  <div class="tab" id="tab-control">
+    <div class="section-title">PANEL KONTROLNY</div>
+    <div class="bulk-row">
+      <button class="bulk-btn" style="background:var(--green)" onclick="setAll(true)">✓ AKTYWUJ WSZYSTKICH</button>
+      <button class="bulk-btn" style="background:var(--red)" onclick="setAll(false)">✗ DEZAKTYWUJ WSZYSTKICH</button>
+    </div>
+    <div id="ctrl-list"></div>
+  </div>
+
+  <!-- TAB: LOG/INFO -->
+  <div class="tab" id="tab-log">
+    <div class="section-title">DZIENNIK ZDARZEŃ</div>
+    <div class="log-box" id="log-box">Inicjalizacja systemu...<br/></div>
+    <div class="log-actions">
+      <button class="log-btn" onclick="clearLog()">🗑 WYCZYŚĆ LOG</button>
+      <button class="log-btn" onclick="copyLog()">📋 KOPIUJ LOG</button>
+    </div>
+    <div class="info-card">
+      <div class="info-section">TASKLET AGENT PANEL</div>
+      <div class="info-line"><span class="info-highlight">Wersja:</span> 1.0</div>
+      <div class="info-line"><span class="info-highlight">Platforma:</span> Android PWA</div>
+      <div class="info-line"><span class="info-highlight">ID:</span> PANEL-ANDROID-v1.0</div>
+      <div class="info-section">WŁAŚCICIEL</div>
+      <div class="info-line"><span class="info-highlight">tom</span></div>
+      <div class="info-line">imperiumultrapro2@wp.pl</div>
+      <div class="info-section">OCHRONA PRAWNA</div>
+      <div class="info-line info-warn">⚠ Tajemnica Handlowa</div>
+      <div class="info-line">Prawo autorskie (Ustawa 1994)</div>
+      <div class="info-line">Własność intelektualna</div>
+      <div class="info-line">Dyrektywa UE 2016/943</div>
+      <div class="info-section">AGENCI</div>
+      <div class="info-line"><span class="info-highlight" id="info-agents">15 agentów | 6 kategorii</span></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Bottom Nav -->
+<nav class="nav">
+  <button class="nav-btn active" onclick="switchTab('dashboard',this)" id="nav-dashboard">
+    <span>📊</span><p>PANEL</p>
+  </button>
+  <button class="nav-btn" onclick="switchTab('launcher',this)" id="nav-launcher">
+    <span>🚀</span><p>LAUNCHER</p>
+  </button>
+  <button class="nav-btn" onclick="switchTab('control',this)" id="nav-control">
+    <span>⚙️</span><p>KONTROLNY</p>
+  </button>
+  <button class="nav-btn" onclick="switchTab('log',this)" id="nav-log">
+    <span>📋</span><p>LOG</p>
+  </button>
+</nav>
+
+<script>
+// ══════════════════════════════════════════
+//  DANE AGENTÓW
+// ══════════════════════════════════════════
+const AGENTS = [
+  {idx:1,  name:"Kontrola Jakości", cat:"Jakość",      id:"QA-AGENT-v1.0",         color:"#6366f1", active:true,  desc:"Weryfikacja outputu wszystkich agentów. Wykrywa błędy logiczne, faktyczne i językowe."},
+  {idx:2,  name:"Kombinator",       cat:"Analiza",     id:"KOMBINATOR-AGENT-v1.0", color:"#a855f7", active:true,  desc:"Kreatywne rozwiązywanie problemów. Nieoczywiste podejścia i innowacje."},
+  {idx:3,  name:"Mechanik",         cat:"Przemysł",    id:"MECHANIK-AGENT-v1.0",   color:"#f97316", active:true,  desc:"Diagnostyka usterek maszyn i pojazdów. Planowanie napraw i serwisu."},
+  {idx:4,  name:"Ślusarz",          cat:"Przemysł",    id:"SLUSARZ-AGENT-v1.0",    color:"#eab308", active:true,  desc:"Obróbka metalu, plany technologiczne, tolerancje i technologie."},
+  {idx:5,  name:"Spawacz",          cat:"Przemysł",    id:"SPAWACZ-AGENT-v1.0",    color:"#ef4444", active:true,  desc:"Spawanie, dobór metod i parametrów, instrukcje WPS."},
+  {idx:6,  name:"Koder",            cat:"IT",          id:"KODER-AGENT-v1.0",      color:"#14b8a6", active:true,  desc:"Programowanie w każdym języku. Debugging, architektura, code review."},
+  {idx:7,  name:"BHP",              cat:"Bezpiecz.",   id:"BHP-AGENT-v1.0",        color:"#22c55e", active:true,  desc:"Ocena ryzyka zawodowego, instrukcje bezpieczeństwa, dokumentacja."},
+  {idx:8,  name:"Tester",           cat:"IT",          id:"TESTER-AGENT-v1.0",     color:"#3b82f6", active:true,  desc:"Testy jednostkowe, integracyjne, E2E, wydajnościowe. Raporty błędów."},
+  {idx:9,  name:"Pentester",        cat:"Cybersec",    id:"PENTESTER-AGENT-v1.0",  color:"#ef4444", active:true,  desc:"Testy penetracyjne, analiza podatności, raporty bezpieczeństwa."},
+  {idx:10, name:"Hacker",           cat:"Cybersec",    id:"HACKER-AGENT-v1.0",     color:"#b91c1c", active:true,  desc:"Ekspert ofensywny. Exploity, reverse engineering, malware analysis."},
+  {idx:11, name:"Antywirus",        cat:"Cybersec",    id:"ANTYWIRUS-AGENT-v1.0",  color:"#10b981", active:true,  desc:"Analiza malware, sygnatury YARA/Sigma, incident response, forensics."},
+  {idx:12, name:"Informatyk",       cat:"IT",          id:"INFORMATYK-AGENT-v1.0", color:"#6366f1", active:true,  desc:"Administracja systemami, sieci, chmura, DevOps, bazy danych."},
+  {idx:13, name:"Strażak",          cat:"Ratownictwo", id:"STRAZAK-AGENT-v1.0",    color:"#ef4444", active:true,  desc:"Ochrona przeciwpożarowa, HAZMAT, ewakuacje, planowanie ppoż."},
+  {idx:14, name:"Medyk",            cat:"Ratownictwo", id:"MEDYK-AGENT-v1.0",      color:"#ec4899", active:true,  desc:"Diagnostyka, farmakologia, medycyna ratunkowa, wszystkie specjalizacje."},
+  {idx:15, name:"Ratownik",         cat:"Ratownictwo", id:"RATOWNIK-AGENT-v1.0",   color:"#f59e0b", active:true,  desc:"KPP/PRM, ratownictwo specjalistyczne, triage, zarządzanie kryzysowe."}
+];
+
+let logLines = [];
+let deferredInstall = null;
+
+// ══════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════
+function addLog(msg){
+  const now = new Date().toTimeString().slice(0,8);
+  const line = `[${now}] ${msg}`;
+  logLines.push(line);
+  const box = document.getElementById('log-box');
+  if(box) box.innerHTML = logLines.map(l=>`<span>${l}</span>`).join('<br/>');
+}
+
+function updateStats(){
+  const on = AGENTS.filter(a=>a.active).length;
+  document.getElementById('stat-on').textContent  = on;
+  document.getElementById('stat-off').textContent = 15 - on;
+}
+
+// ══════════════════════════════════════════
+//  NAWIGACJA
+// ══════════════════════════════════════════
+function switchTab(name, btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ══════════════════════════════════════════
+//  RENDER DASHBOARD
+// ══════════════════════════════════════════
+function renderDashboard(agents){
+  const list = document.getElementById('agent-list');
+  list.innerHTML = agents.map(a => `
+    <div class="agent-card" onclick="addLog('Wyswietlono: ${a.name}')">
+      <div class="agent-bar" style="background:${a.color}"></div>
+      <div class="agent-body">
+        <div class="agent-num">#${a.idx}</div>
+        <div class="agent-name">${a.name}</div>
+        <div class="agent-cat" style="color:${a.color}">[${a.cat}]</div>
+        <div class="agent-desc">${a.desc}</div>
+        <div class="agent-id">${a.id}</div>
+      </div>
+      <div class="agent-dot ${a.active?'on':'off'}" id="dot-${a.id}"></div>
+    </div>
+  `).join('');
+}
+
+function filterAgents(q){
+  const filtered = q
+    ? AGENTS.filter(a => a.name.toLowerCase().includes(q.toLowerCase()) || a.cat.toLowerCase().includes(q.toLowerCase()))
+    : AGENTS;
+  renderDashboard(filtered);
+}
+
+// ══════════════════════════════════════════
+//  RENDER LAUNCHER
+// ══════════════════════════════════════════
+function renderLauncher(){
+  document.getElementById('launch-list').innerHTML = AGENTS.map(a => `
+    <div class="launch-item">
+      <div class="agent-bar" style="background:${a.color};width:5px;align-self:stretch"></div>
+      <div class="launch-body">
+        <div class="launch-name">${a.name}</div>
+        <div class="launch-id">${a.id}</div>
+      </div>
+      <button class="launch-btn" style="background:${a.color}" onclick="launchAgent('${a.id}','${a.name}')">URUCHOM</button>
+    </div>
+  `).join('');
+}
+
+function launchAgent(id, name){
+  const url = document.getElementById('url-input').value || 'https://tasklet.ai';
+  window.open(url, '_blank');
+  addLog(`Uruchomiono: ${name} [${id}]`);
+}
+
+// ══════════════════════════════════════════
+//  RENDER KONTROLNY
+// ══════════════════════════════════════════
+function renderCtrl(){
+  document.getElementById('ctrl-list').innerHTML = AGENTS.map(a => `
+    <div class="ctrl-item">
+      <div class="ctrl-bar" style="background:${a.color}"></div>
+      <div class="ctrl-info">
+        <div class="ctrl-name">${a.name}</div>
+        <div class="ctrl-cat">[${a.cat}] &nbsp; <span style="font-family:var(--mono);font-size:9px;color:var(--border)">${a.id}</span></div>
+      </div>
+      <button class="toggle ${a.active?'on':'off'}" id="toggle-${a.id}" onclick="toggleAgent('${a.id}')"></button>
+    </div>
+  `).join('');
+}
+
+function toggleAgent(id){
+  const a = AGENTS.find(x=>x.id===id);
+  if(!a) return;
+  a.active = !a.active;
+  const tog = document.getElementById('toggle-'+id);
+  const dot = document.getElementById('dot-'+id);
+  if(tog){ tog.className = 'toggle ' + (a.active?'on':'off'); }
+  if(dot){ dot.className = 'agent-dot ' + (a.active?'on':'off'); }
+  addLog(`${a.active?'Aktywowano':'Dezaktywowano'}: ${a.name}`);
+  updateStats();
+}
+
+function setAll(state){
+  AGENTS.forEach(a=>{
+    a.active = state;
+    const tog = document.getElementById('toggle-'+a.id);
+    const dot = document.getElementById('dot-'+a.id);
+    if(tog) tog.className = 'toggle ' + (state?'on':'off');
+    if(dot) dot.className = 'agent-dot ' + (state?'on':'off');
+  });
+  addLog(state ? 'Aktywowano wszystkich 15 agentów' : 'Dezaktywowano wszystkich agentów');
+  updateStats();
+}
+
+// ══════════════════════════════════════════
+//  LOG
+// ══════════════════════════════════════════
+function clearLog(){
+  logLines = [];
+  document.getElementById('log-box').innerHTML = '';
+  addLog('Log wyczyszczony');
+}
+
+function copyLog(){
+  navigator.clipboard?.writeText(logLines.join('\n')).then(()=>addLog('Log skopiowany do schowka'));
+}
+
+// ══════════════════════════════════════════
+//  PWA INSTALL
+// ══════════════════════════════════════════
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault(); deferredInstall = e;
+  document.getElementById('install-banner').style.display='flex';
+});
+
+function installPWA(){
+  if(deferredInstall){ deferredInstall.prompt(); }
+  document.getElementById('install-banner').style.display='none';
+}
+
+// ══════════════════════════════════════════
+//  SERVICE WORKER
+// ══════════════════════════════════════════
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+renderDashboard(AGENTS);
+renderLauncher();
+renderCtrl();
+addLog('System uruchomiony — PANEL-ANDROID-v1.0');
+addLog('Załadowano 15 agentów w 6 kategoriach');
+addLog('Właściciel: tom | Tajemnica Handlowa');
+addLog('Gotowy do pracy.');
+</script>
+</body>
+</html>
