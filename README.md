@@ -1,0 +1,1 @@
+# Tasklet Agent Control PanelDashboard, Launcher i Panel Kontrolny dla 15 agentow AI.## Zawartosci- `TASKLET_AUTORUN.bat` - samodzielny launcher Windows- `windows/` - panel WinForms (dark theme)- `android/` - aplikacja PWA na Androida(c) 2026 tom | imperiumultrapro2@wp.pl
